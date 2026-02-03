@@ -1,69 +1,49 @@
-# feedback-quarkus
+# Sistema de Feedback de Cursos (Quarkus + AWS Lambda)
+Este projeto é uma API Serverless desenvolvida com Quarkus e implantada na AWS usando SAM (Serverless Application Model).  
+O sistema recebe avaliações de cursos, armazena no DynamoDB e dispara notificações via SNS para casos críticos.
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+# Endpoint de Teste
+O endpoint principal para envio de feedbacks é: POST  
+[https://d9qwrm05fd.execute-api.sa-east-1.amazonaws.com/Prod/avaliacao/](https://d9qwrm05fd.execute-api.sa-east-1.amazonaws.com/Prod/avaliacao/)
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+# Padrão das Requisições (Postman)
+Para testar a API, configure uma nova requisição no Postman com os seguintes detalhes:  
 
-## Running the application in dev mode
+Método: POST  
 
-You can run your application in dev mode that enables live coding using:
+Headers: Content-Type: application/json  
 
-```shell script
-./mvnw quarkus:dev
-```
+Body (raw JSON):  
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+{  
+  "descricao": "O conteúdo de Quarkus com AWS está excelente!",  
+  "nota": 8  
+}
 
-## Packaging and running the application
+# Regras de Prioridade (Urgência)
+O sistema classifica automaticamente a urgência do feedback com base na nota enviada:
 
-The application can be packaged using:
+0 a 5	ALTA	Salva no banco e envia e-mail de alerta ao coordenador.  
+6 a 7	MEDIA	Apenas salva no banco de dados.  
+8 a 10	BAIXA	Apenas salva no banco de dados.
 
-```shell script
-./mvnw package
-```
+# Tecnologias Utilizadas
+Java 21  
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+Quarkus (Framework Java nativo para nuvem)  
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+AWS Lambda (Processamento Serverless)  
 
-If you want to build an _über-jar_, execute the following command:
+Amazon DynamoDB (Banco de dados NoSQL)  
 
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
+Amazon SNS (Serviço de notificações)  
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+AWS SAM (Infraestrutura como Código)  
 
-## Creating a native executable
+# Como executar o projeto localmente
 
-You can create a native executable using:
+Build do projeto:  
+./mvnw clean package -DskipTests  
 
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/feedback-quarkus-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Related Guides
-
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-- Amazon Lambda ([guide](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-lambda.html)): Connect to Amazon Lambda
-- Amazon DynamoDB ([guide](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-dynamodb.html)): Connect to Amazon DynamoDB datastore
-- Amazon SNS ([guide](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-sns.html)): Connect to Amazon SNS pub/sub messaging service
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+Deploy na AWS:  
+sam deploy  
