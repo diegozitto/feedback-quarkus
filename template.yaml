@@ -28,6 +28,9 @@ Resources:
           Properties:
             Path: /avaliacao
             Method: post
+      Environment:
+        Variables:
+         SNS_TOPIC_ARN: !Ref CriticalAlertsTopic
 
   CriticalAlertsTopic:
     Type: AWS::SNS::Topic

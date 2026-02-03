@@ -44,11 +44,13 @@ public class RegistrarFeedbackHandler implements RequestHandler<FeedbackRequestD
     }
 
     private void enviarAlertaCritico(FeedbackRequestDTO input) {
+        String topicArn = System.getenv("SNS_TOPIC_ARN");
+
         String mensagem = String.format("ALERTA DE CURSO: Nota %d recebida. Comentário: %s",
                 input.getNota(), input.getDescricao());
 
         snsClient.publish(PublishRequest.builder()
-                .topicArn("arn:aws:sns:sa-east-1:123456789012:CriticalAlerts")
+                .topicArn(topicArn)
                 .message(mensagem)
                 .subject("Urgência Alta: Avaliação de Curso Ruim")
                 .build());
