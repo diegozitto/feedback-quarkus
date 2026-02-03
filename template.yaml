@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Sistema de Feedback de Cursos - Quarkus e SAM
+
+Resources:
+  FeedbackTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: Feedbacks
+      PrimaryKey:
+        Name: id
+        Type: String
+
+  ProcessFeedbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Runtime: java21
+      CodeUri: .
+      MemorySize: 512
+      Timeout: 15
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref FeedbackTable}
+        - SNSPublishMessagePolicy: {TopicName: CriticalAlerts}
+      Events:
+        PostFeedback:
+          Type: Api
+          Properties:
+            Path: /avaliacao
+            Method: post
+
+  CriticalAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: CriticalAlerts
+
+Outputs:
+  FeedbackApi:
+    Description: "URL do API Gateway para enviar avaliações"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/avaliacao/"
