@@ -20,8 +20,10 @@ Resources:
       MemorySize: 512
       Timeout: 15
       Policies:
-        - DynamoDBCrudPolicy: {TableName: !Ref FeedbackTable}
-        - SNSPublishMessagePolicy: {TopicName: CriticalAlerts}
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FeedbackTable
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt CriticalAlertsTopic.TopicName
       Events:
         PostFeedback:
           Type: Api

@@ -19,9 +19,12 @@ public class FeedbackService {
     public void salvar(FeedbackModel feedback) {
         String id = UUID.randomUUID().toString();
 
+        String descricaoValida = (feedback.getDescricao() == null || feedback.getDescricao().isEmpty())
+                ? "Sem descrição" : feedback.getDescricao();
+
         Map<String, AttributeValue> item = Map.of(
                 "id", AttributeValue.builder().s(id).build(),
-                "descricao", AttributeValue.builder().s(feedback.getDescricao()).build(),
+                "descricao", AttributeValue.builder().s(descricaoValida).build(),
                 "nota", AttributeValue.builder().n(String.valueOf(feedback.getNota())).build(),
                 "urgencia", AttributeValue.builder().s(feedback.getUrgencia()).build(),
                 "dataEnvio", AttributeValue.builder().s(feedback.getDataEnvio()).build()

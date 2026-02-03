@@ -2,6 +2,7 @@ package org.feedback.handler;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import org.feedback.dto.FeedbackRequestDTO;
@@ -11,9 +12,10 @@ import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Named("registrarFeedbackHandler")
-public class RegistrarFeedbackHandler implements RequestHandler<FeedbackRequestDTO, String> {
+public class RegistrarFeedbackHandler implements RequestHandler<FeedbackRequestDTO, APIGatewayProxyResponseEvent> {
 
     @Inject
     FeedbackService service;
@@ -22,25 +24,46 @@ public class RegistrarFeedbackHandler implements RequestHandler<FeedbackRequestD
     SnsClient snsClient;
 
     @Override
-    public String handleRequest(FeedbackRequestDTO input, Context context) {
+    public APIGatewayProxyResponseEvent handleRequest(FeedbackRequestDTO input, Context context) {
+        try {
 
-        String urgencia = (input.getNota() < 5) ? "ALTA" : "NORMAL";
+            String urgencia;
+            if (input.getNota() <= 5) {
+                urgencia = "ALTA";
+            } else if (input.getNota() >= 6 && input.getNota() <= 7) {
+                urgencia = "MEDIA";
+            } else {
+                urgencia = "BAIXA";
+            }
 
-        FeedbackModel model = FeedbackModel.builder()
-                .descricao(input.getDescricao())
-                .nota(input.getNota())
-                .urgencia(urgencia)
-                .dataEnvio(LocalDateTime.now().toString())
-                .build();
+            FeedbackModel model = FeedbackModel.builder()
+                    .descricao(input.getDescricao())
+                    .nota(input.getNota())
+                    .urgencia(urgencia)
+                    .dataEnvio(LocalDateTime.now().toString())
+                    .build();
 
-        service.salvar(model);
+            service.salvar(model);
 
-        if ("ALTA".equals(urgencia)) {
-            enviarAlertaCritico(input);
-            return "Avaliação negativa registrada. O coordenador do curso foi notificado.";
+            String mensagemRetorno;
+
+            if ("ALTA".equals(urgencia)) {
+                enviarAlertaCritico(input);
+                mensagemRetorno = "Avaliação negativa registrada. O coordenador foi notificado.";
+            } else {
+                mensagemRetorno = "Avaliação registrada com sucesso! Prioridade: " + urgencia;
+            }
+
+            return new APIGatewayProxyResponseEvent()
+                    .withStatusCode(200)
+                    .withHeaders(Map.of("Content-Type", "application/json"))
+                    .withBody(String.format("{\"message\": \"%s\"}", mensagemRetorno));
+
+        } catch (Exception e) {
+            return new APIGatewayProxyResponseEvent()
+                    .withStatusCode(500)
+                    .withBody(String.format("{\"error\": \"%s\"}", e.getMessage()));
         }
-
-        return "Avaliação do curso registrada com sucesso!";
     }
 
     private void enviarAlertaCritico(FeedbackRequestDTO input) {
