@@ -2,7 +2,9 @@ package org.feedback.handler;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import org.feedback.dto.FeedbackRequestDTO;
@@ -15,7 +17,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Named("registrarFeedbackHandler")
-public class RegistrarFeedbackHandler implements RequestHandler<FeedbackRequestDTO, APIGatewayProxyResponseEvent> {
+public class RegistrarFeedbackHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     @Inject
     FeedbackService service;
@@ -23,14 +25,18 @@ public class RegistrarFeedbackHandler implements RequestHandler<FeedbackRequestD
     @Inject
     SnsClient snsClient;
 
+    @Inject
+    ObjectMapper objectMapper;
+
     @Override
-    public APIGatewayProxyResponseEvent handleRequest(FeedbackRequestDTO input, Context context) {
+    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
         try {
+            FeedbackRequestDTO input = objectMapper.readValue(request.getBody(), FeedbackRequestDTO.class);
 
             String urgencia;
             if (input.getNota() <= 5) {
                 urgencia = "ALTA";
-            } else if (input.getNota() >= 6 && input.getNota() <= 7) {
+            } else if (input.getNota() == 6 || input.getNota() == 7) {
                 urgencia = "MEDIA";
             } else {
                 urgencia = "BAIXA";
@@ -46,7 +52,6 @@ public class RegistrarFeedbackHandler implements RequestHandler<FeedbackRequestD
             service.salvar(model);
 
             String mensagemRetorno;
-
             if ("ALTA".equals(urgencia)) {
                 enviarAlertaCritico(input);
                 mensagemRetorno = "Avaliação negativa registrada. O coordenador foi notificado.";
