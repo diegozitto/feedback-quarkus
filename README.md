@@ -1,49 +1,50 @@
-# Sistema de Feedback de Cursos (Quarkus + AWS Lambda)
-Este projeto é uma API Serverless desenvolvida com Quarkus e implantada na AWS usando SAM (Serverless Application Model).  
-O sistema recebe avaliações de cursos, armazena no DynamoDB e dispara notificações via SNS para casos críticos.
+# Sistema de Feedback de Cursos (Pos Tech - Fase 4)
+Este projeto implementa uma plataforma de feedback serverless utilizando Quarkus e AWS Lambda.  
+O sistema permite que estudantes avaliem aulas, armazenando os dados no DynamoDB e notificando administradores via SNS em caso de notas baixas.  
 
-# Endpoint de Teste
-O endpoint principal para envio de feedbacks é: POST  
-[https://d9qwrm05fd.execute-api.sa-east-1.amazonaws.com/Prod/avaliacao/](https://d9qwrm05fd.execute-api.sa-east-1.amazonaws.com/Prod/avaliacao/)
+# Guia de Teste (Postman)
+URL do Endpoint: POST - https://d9qwrm05fd.execute-api.sa-east-1.amazonaws.com/Prod/avaliacao/  
 
-# Padrão das Requisições (Postman)
-Para testar a API, configure uma nova requisição no Postman com os seguintes detalhes:  
+Configuração no Postman:  
+1. Method: POST  
 
-Método: POST  
+2. Body: Selecione raw e o tipo JSON.  
 
-Headers: Content-Type: application/json  
+3. Cabeçalho: Verifique se Content-Type é application/json.  
 
-Body (raw JSON):  
+# Exemplos de Requisição:
 
+Feedback Positivo (Baixa Prioridade):  
 {  
-  "descricao": "O conteúdo de Quarkus com AWS está excelente!",  
-  "nota": 8  
+"descricao": "Conteúdo excelente e muito bem detalhado.",  
+"nota": 10  
 }
 
-# Regras de Prioridade (Urgência)
-O sistema classifica automaticamente a urgência do feedback com base na nota enviada:
+Feedback Crítico (Alta Prioridade - Gera Alerta SNS):  
+{  
+"descricao": "Tive problemas para acessar os materiais da aula.",  
+"nota": 3  
+}
 
-0 a 5	ALTA	Salva no banco e envia e-mail de alerta ao coordenador.  
-6 a 7	MEDIA	Apenas salva no banco de dados.  
-8 a 10	BAIXA	Apenas salva no banco de dados.
+# Regras de Negócio e Priorização
+O sistema classifica as avaliações automaticamente:  
 
-# Tecnologias Utilizadas
-Java 21  
+* Prioridade ALTA (Nota 0 a 5): Salva no banco e dispara um e-mail de alerta imediato via SNS contendo a descrição e nota.
 
-Quarkus (Framework Java nativo para nuvem)  
+* Prioridade MÉDIA (Nota 6 ou 7): Apenas registro no banco de dados.
 
-AWS Lambda (Processamento Serverless)  
+* Prioridade BAIXA (Nota 8 a 10): Apenas registro no banco de dados.
 
-Amazon DynamoDB (Banco de dados NoSQL)  
+# Tecnologias e Arquitetura
+Runtime: Java 21 com Quarkus
 
-Amazon SNS (Serviço de notificações)  
+Infraestrutura: AWS SAM (Serverless Application Model)
 
-AWS SAM (Infraestrutura como Código)  
+Banco de Dados: Amazon DynamoDB (Tabela Feedbacks)
 
-# Como executar o projeto localmente
+Mensageria: Amazon SNS
 
-Build do projeto:  
-./mvnw clean package -DskipTests  
+# Como executar o Deploy
+* Build: ./mvnw clean package -DskipTests
 
-Deploy na AWS:  
-sam deploy  
+* Deploy: sam deploy
