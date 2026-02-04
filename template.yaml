@@ -1,8 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Sistema de Feedback de Cursos - Quarkus e SAM
+Description: Sistema de Feedback de Cursos - Quarkus e SAM - Tech Challenge
 
 Resources:
+  # Tabela NoSQL para armazenar os feedbacks
   FeedbackTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
@@ -10,6 +11,11 @@ Resources:
       PrimaryKey:
         Name: id
         Type: String
+
+  CriticalAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: CriticalAlerts
 
   ProcessFeedbackFunction:
     Type: AWS::Serverless::Function
@@ -32,12 +38,31 @@ Resources:
             Method: post
       Environment:
         Variables:
-         SNS_TOPIC_ARN: !Ref CriticalAlertsTopic
+          SNS_TOPIC_ARN: !Ref CriticalAlertsTopic
+          QUARKUS_LAMBDA_HANDLER: registrarFeedbackHandler
 
-  CriticalAlertsTopic:
-    Type: AWS::SNS::Topic
+  WeeklyReportFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      TopicName: CriticalAlerts
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Runtime: java21
+      CodeUri: target/function.zip
+      MemorySize: 512
+      Timeout: 30
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref FeedbackTable
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt CriticalAlertsTopic.TopicName
+      Events:
+        WeeklySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: "rate(7 days)"
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref CriticalAlertsTopic
+          QUARKUS_LAMBDA_HANDLER: gerarRelatorioHandler
 
 Outputs:
   FeedbackApi:
