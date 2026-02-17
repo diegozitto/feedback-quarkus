@@ -1,6 +1,8 @@
 # Sistema de Feedback de Cursos (Pos Tech - Fase 4)
 Este projeto implementa uma plataforma de feedback serverless utilizando Quarkus e AWS Lambda.  
-O sistema permite que estudantes avaliem aulas, armazenando os dados no DynamoDB e notificando administradores via SNS em caso de notas baixas.  
+O sistema permite que estudantes avaliem aulas, armazenando os dados no DynamoDB e notificando administradores via SNS em caso de notas baixas. 
+
+###### Acesse a [*Documentação técnica*](https://docs.google.com/document/d/1g8KcWhl_I4Be7GKzJ8gfy7qqwckk8KNf1qWoCbZxUbU/edit?usp=sharing) para mais detalhes. 
 
 # Guia de Teste (Postman)
 URL do Endpoint: POST - <API_URL>/avaliacao/  
