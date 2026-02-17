@@ -6,6 +6,7 @@ import org.feedback.model.FeedbackModel;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.Map;
 import java.util.UUID;
@@ -13,8 +14,28 @@ import java.util.UUID;
 @ApplicationScoped
 public class FeedbackService {
 
+    // Agora permite injeção via construtor para facilitar testes
+    private DynamoDbClient dynamoDb;
+
     @Inject
-    DynamoDbClient dynamoDb;
+    @ConfigProperty(name = "TABLE_NAME")
+    String tableName;
+
+    // Construtor padrão usado em runtime
+    public FeedbackService() {
+        this.dynamoDb = DynamoDbClient.builder().build();
+    }
+
+    // Construtor para testes onde podemos injetar um mock (sem tableName)
+    public FeedbackService(DynamoDbClient dynamoDb) {
+        this.dynamoDb = dynamoDb;
+    }
+
+    // Construtor para testes onde podemos injetar um mock e um tableName customizado
+    public FeedbackService(DynamoDbClient dynamoDb, String tableName) {
+        this.dynamoDb = dynamoDb;
+        this.tableName = tableName;
+    }
 
     public void salvar(FeedbackModel feedback) {
         String id = UUID.randomUUID().toString();
@@ -31,7 +52,7 @@ public class FeedbackService {
         );
 
         dynamoDb.putItem(PutItemRequest.builder()
-                .tableName("Feedbacks")
+                .tableName(tableName != null && !tableName.isEmpty() ? tableName : "Feedbacks")
                 .item(item)
                 .build());
     }

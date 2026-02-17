@@ -2,13 +2,13 @@ package org.feedback.handler;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.List;
 import java.util.Map;
@@ -16,15 +16,18 @@ import java.util.Map;
 @Named("gerarRelatorioHandler")
 public class GerarRelatorioHandler implements RequestHandler<Map<String, Object>, String> {
 
-    @Inject
-    DynamoDbClient dynamoDb;
+    private final DynamoDbClient dynamoDb = DynamoDbClient.builder().build();
+    private final SnsClient snsClient = SnsClient.builder().build();
 
-    @Inject
-    SnsClient snsClient;
+    @ConfigProperty(name = "TABLE_NAME", defaultValue = "Feedbacks")
+    String tableName;
+
+    @ConfigProperty(name = "SNS_TOPIC_ARN", defaultValue = "")
+    String snsTopicArn;
 
     @Override
     public String handleRequest(Map<String, Object> input, Context context) {
-        ScanResponse response = dynamoDb.scan(ScanRequest.builder().tableName("Feedbacks").build());
+        ScanResponse response = dynamoDb.scan(ScanRequest.builder().tableName(tableName != null && !tableName.isEmpty() ? tableName : "Feedbacks").build());
         List<Map<String, software.amazon.awssdk.services.dynamodb.model.AttributeValue>> items = response.items();
 
         if (items.isEmpty()) return "Nenhum feedback encontrado para o relatório.";
@@ -40,17 +43,23 @@ public class GerarRelatorioHandler implements RequestHandler<Map<String, Object>
             else baixa++;
         }
 
-        String relatorio = String.format(
-                "--- RELATÓRIO SEMANAL DE FEEDBACKS ---\n" +
-                        "Total de Avaliações: %d\n" +
-                        "Média Geral: %.2f\n\n" +
-                        "Distribuição por Urgência:\n" +
-                        "- ALTA: %d\n- MEDIA: %d\n- BAIXA: %d",
-                items.size(), (somaNotas / items.size()), alta, media, baixa
-        );
+        String template = """
+                --- RELATÓRIO SEMANAL DE FEEDBACKS ---
+                Total de Avaliações: %d
+                Média Geral: %.2f
+
+                Distribuição por Urgência:
+                - ALTA: %d
+                - MEDIA: %d
+                - BAIXA: %d
+                """;
+
+        String relatorio = String.format(template, items.size(), (somaNotas / items.size()), alta, media, baixa);
+
+        String topic = snsTopicArn != null && !snsTopicArn.isEmpty() ? snsTopicArn : System.getenv("SNS_TOPIC_ARN");
 
         snsClient.publish(PublishRequest.builder()
-                .topicArn(System.getenv("SNS_TOPIC_ARN"))
+                .topicArn(topic)
                 .message(relatorio)
                 .subject("Relatório Semanal de Satisfação")
                 .build());

@@ -12,6 +12,7 @@ import org.feedback.model.FeedbackModel;
 import org.feedback.service.FeedbackService;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -22,11 +23,15 @@ public class RegistrarFeedbackHandler implements RequestHandler<APIGatewayProxyR
     @Inject
     FeedbackService service;
 
-    @Inject
-    SnsClient snsClient;
+    // Criando cliente SNS
+    private final SnsClient snsClient = SnsClient.builder().build();
 
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    @ConfigProperty(name = "SNS_TOPIC_ARN", defaultValue = "")
+    String snsTopicArn;
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
@@ -72,7 +77,7 @@ public class RegistrarFeedbackHandler implements RequestHandler<APIGatewayProxyR
     }
 
     private void enviarAlertaCritico(FeedbackRequestDTO input) {
-        String topicArn = System.getenv("SNS_TOPIC_ARN");
+        String topicArn = snsTopicArn != null && !snsTopicArn.isEmpty() ? snsTopicArn : System.getenv("SNS_TOPIC_ARN");
 
         String mensagem = String.format("ALERTA DE CURSO: Nota %d recebida. Comentário: %s",
                 input.getNota(), input.getDescricao());

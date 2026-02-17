@@ -2,6 +2,12 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Sistema de Feedback de Cursos - Quarkus e SAM - Tech Challenge
 
+Parameters:
+  DemoEmail:
+    Type: String
+    Default: your-email@example.com
+    Description: "Email para receber notificações SNS de demonstração (altere durante o deploy)"
+
 Resources:
   # Tabela NoSQL para armazenar os feedbacks
   FeedbackTable:
@@ -17,14 +23,34 @@ Resources:
     Properties:
       TopicName: CriticalAlerts
 
+  # Fila SQS para Dead Letter Queue em caso de falhas da função
+  ProcessFeedbackDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ProcessFeedbackDLQ
+
+  # Subscription para demonstrar alertas (defina DemoEmail durante o deploy)
+  CriticalAlertsSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref CriticalAlertsTopic
+      Protocol: email
+      Endpoint: !Ref DemoEmail
+
   ProcessFeedbackFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: ProcessFeedbackFunction
+      Description: "Processa POST /avaliacao - registra feedbacks e publica alertas críticos"
       Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Runtime: java21
       CodeUri: target/function.zip
       MemorySize: 512
       Timeout: 15
+      Tracing: Active
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt ProcessFeedbackDLQ.Arn
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref FeedbackTable
@@ -38,17 +64,24 @@ Resources:
             Method: post
       Environment:
         Variables:
+          TABLE_NAME: !Ref FeedbackTable
           SNS_TOPIC_ARN: !Ref CriticalAlertsTopic
           QUARKUS_LAMBDA_HANDLER: registrarFeedbackHandler
 
   WeeklyReportFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: WeeklyReportFunction
+      Description: "Gera relatório semanal dos feedbacks e publica via SNS"
       Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Runtime: java21
       CodeUri: target/function.zip
       MemorySize: 512
       Timeout: 30
+      Tracing: Active
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt ProcessFeedbackDLQ.Arn
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref FeedbackTable
@@ -61,6 +94,7 @@ Resources:
             Schedule: "rate(7 days)"
       Environment:
         Variables:
+          TABLE_NAME: !Ref FeedbackTable
           SNS_TOPIC_ARN: !Ref CriticalAlertsTopic
           QUARKUS_LAMBDA_HANDLER: gerarRelatorioHandler
 
@@ -68,3 +102,19 @@ Outputs:
   FeedbackApi:
     Description: "URL do API Gateway para enviar avaliações"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/avaliacao/"
+
+  FeedbackTableName:
+    Description: "Nome da tabela DynamoDB usada para feedbacks"
+    Value: !Ref FeedbackTable
+
+  FeedbackTableArn:
+    Description: "ARN da tabela DynamoDB Feedbacks"
+    Value: !GetAtt FeedbackTable.Arn
+
+  CriticalAlertsTopicArn:
+    Description: "ARN do tópico SNS de alertas críticos"
+    Value: !Ref CriticalAlertsTopic
+
+  DemoNotificationEmail:
+    Description: "E-mail configurado para receber notificações de demonstração (parâmetro DemoEmail)"
+    Value: !Ref DemoEmail
