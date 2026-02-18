@@ -4,10 +4,11 @@ version = 0.1
 stack_name = "feedback-curso-stack"
 resolve_s3 = true
 s3_prefix = "feedback-curso-stack"
-region = "sa-east-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
+disable_rollback = true
+parameter_overrides = "DemoEmail=\"thiagotbr49@gmail.com\""
 
 [default.global.parameters]
 region = "sa-east-1"
